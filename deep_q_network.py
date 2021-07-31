@@ -1,30 +1,21 @@
 #!/usr/bin/env python
 
-import sys
-
-import cv2
 import tensorflow as tf
-
-sys.path.append("Wrapped Game Code/")
+import cv2
 import os
-import random
-import time
-from collections import deque
-
+import sys
+import re
+sys.path.append("Wrapped Game Code/")
+import pong_fun # whichever is imported "as game" will be used
 import dummy_game
+import tetris_fun as game
+import random
 import numpy as np
+from collections import deque
+# > Tips 修复运行一段时间后卡死的问题
+import pygame
 
-
-
-GAME = 'pong' # the name of the game being played for log files
-
-if GAME == 'tetris':
-    import tetris_fun as game
-elif GAME == 'pong':
-    import pong_fun as game  # whichever is imported "as game" will be used
-
-
-
+GAME = 'tetris' # the name of the game being played for log files
 ACTIONS = 6 # number of valid actions
 GAMMA = 0.99 # decay rate of past observations
 OBSERVE = 500. # timesteps to observe before training
@@ -93,7 +84,6 @@ def trainNetwork(s, readout, h_fc1, sess):
     # define the cost function
     a = tf.placeholder("float", [None, ACTIONS])
     y = tf.placeholder("float", [None])
-    # Tips: readout_action = tf.reduce_sum(tf.mul(readout, a), reduction_indices = 1)
     readout_action = tf.reduce_sum(tf.multiply(readout, a), reduction_indices = 1)
     cost = tf.reduce_mean(tf.square(y - readout_action))
     train_step = tf.train.AdamOptimizer(1e-6).minimize(cost)
@@ -105,27 +95,37 @@ def trainNetwork(s, readout, h_fc1, sess):
     D = deque()
 
     # printing
-    a_file = open("logs_" + GAME + "/readout.txt", 'w')
-    h_file = open("logs_" + GAME + "/hidden.txt", 'w')
+    if not os.path.exists('logs/' + GAME):
+        os.makedirs('logs/'+ GAME)
+
+    a_file = open("logs/" + GAME + "/readout.txt", 'w')
+    h_file = open("logs/" + GAME + "/hidden.txt", 'w')
 
     # get the first state by doing nothing and preprocess the image to 80x80x4
     do_nothing = np.zeros(ACTIONS)
     do_nothing[0] = 1
     x_t, r_0, terminal = game_state.frame_step(do_nothing)
+        # > Tips 修复运行一段时间后卡死的问题
+    pygame.event.pump()
     x_t = cv2.cvtColor(cv2.resize(x_t, (80, 80)), cv2.COLOR_BGR2GRAY)
     ret, x_t = cv2.threshold(x_t,1,255,cv2.THRESH_BINARY)
     s_t = np.stack((x_t, x_t, x_t, x_t), axis = 2)
 
     # saving and loading networks
     saver = tf.train.Saver()
-    sess.run(tf.initialize_all_variables())
-    checkpoint = tf.train.get_checkpoint_state("saved_networks")
+
+    # Tips: 被弃用了，并且于2017-03-02之后就将被删除
+    # sess.run(tf.initialize_all_variables())
+    sess.run(tf.global_variables_initializer())
+
+    # 断点续传
+    checkpoint = tf.train.get_checkpoint_state(saved_networks)
     if checkpoint and checkpoint.model_checkpoint_path:
         saver.restore(sess, checkpoint.model_checkpoint_path)
         print("Successfully loaded:", checkpoint.model_checkpoint_path)
     else:
         print("Could not find old network weights")
-
+    
     epsilon = INITIAL_EPSILON
     t = 0
     while "pigs" != "fly":
@@ -147,6 +147,8 @@ def trainNetwork(s, readout, h_fc1, sess):
         for i in range(0, K):
             # run the selected action and observe next state and reward
             x_t1_col, r_t, terminal = game_state.frame_step(a_t)
+                # > Tips 修复运行一段时间后卡死的问题
+            pygame.event.pump()
             x_t1 = cv2.cvtColor(cv2.resize(x_t1_col, (80, 80)), cv2.COLOR_BGR2GRAY)
             ret, x_t1 = cv2.threshold(x_t1,1,255,cv2.THRESH_BINARY)
             x_t1 = np.reshape(x_t1, (80, 80, 1))
@@ -189,8 +191,7 @@ def trainNetwork(s, readout, h_fc1, sess):
 
         # save progress every 10000 iterations
         if t % 10000 == 0:
-            saver.save(sess, 'saved_networks/' + GAME + '-dqn', global_step = t)
-            
+            saver.save(sess, saved_networks + '/' + GAME + '-dqn', global_step = t)
 
         # print info
         state = ""
@@ -200,8 +201,11 @@ def trainNetwork(s, readout, h_fc1, sess):
             state = "explore"
         else:
             state = "train"
-        # print("TIMESTEP", t, "/ STATE", state, "/ LINES", game_state.total_lines, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-        print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
+        if t % 100 == 0:
+            if GAME == 'tetris':
+                print("TIMESTEP", t, "/ STATE", state, "/ LINES", game_state.total_lines, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
+            elif GAME == 'pong':
+                print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
         # write info to files
         '''
         if t % 10000 <= 100:
@@ -219,4 +223,21 @@ def main():
     playGame()
 
 if __name__ == "__main__":
+    args = sys.argv
+    args.append(None)
+
+    if args[1] and args[1].lower() == 'pong':
+        GAME = 'pong'
+        import pong_fun as game  # whichever is imported "as game" will be used
+        saved_networks = 'pong_networks'
+    elif args[1] and  args[1].lower() == 'tetris':
+        GAME = 'tetris'
+        import tetris_fun as game
+        saved_networks = 'tetris_networks'
+    else:   
+        GAMES = ['pong', 'tetris']
+        print('>> Waring: Game Must is %s'%' or '.join(GAMES))
+        exit()
+
+    print(args)
     main()
