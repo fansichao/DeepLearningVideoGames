@@ -1,15 +1,20 @@
 #!/usr/bin/env python
 
-import tensorflow as tf
-import cv2
 import sys
+
+import cv2
+import tensorflow as tf
+
 sys.path.append("Wrapped Game Code/")
-import pong_fun # whichever is imported "as game" will be used
-import dummy_game
-import tetris_fun as game
+import os
 import random
-import numpy as np
+import time
 from collections import deque
+
+import dummy_game
+import numpy as np
+import pong_fun  # whichever is imported "as game" will be used
+import tetris_fun as game
 
 GAME = 'tetris' # the name of the game being played for log files
 ACTIONS = 6 # number of valid actions
@@ -80,7 +85,8 @@ def trainNetwork(s, readout, h_fc1, sess):
     # define the cost function
     a = tf.placeholder("float", [None, ACTIONS])
     y = tf.placeholder("float", [None])
-    readout_action = tf.reduce_sum(tf.mul(readout, a), reduction_indices = 1)
+    # Tips: readout_action = tf.reduce_sum(tf.mul(readout, a), reduction_indices = 1)
+    readout_action = tf.reduce_sum(tf.multiply(readout, a), reduction_indices = 1)
     cost = tf.reduce_mean(tf.square(y - readout_action))
     train_step = tf.train.AdamOptimizer(1e-6).minimize(cost)
 
@@ -108,9 +114,9 @@ def trainNetwork(s, readout, h_fc1, sess):
     checkpoint = tf.train.get_checkpoint_state("saved_networks")
     if checkpoint and checkpoint.model_checkpoint_path:
         saver.restore(sess, checkpoint.model_checkpoint_path)
-        print "Successfully loaded:", checkpoint.model_checkpoint_path
+        print("Successfully loaded:", checkpoint.model_checkpoint_path)
     else:
-        print "Could not find old network weights"
+        print("Could not find old network weights")
 
     epsilon = INITIAL_EPSILON
     t = 0
@@ -176,6 +182,7 @@ def trainNetwork(s, readout, h_fc1, sess):
         # save progress every 10000 iterations
         if t % 10000 == 0:
             saver.save(sess, 'saved_networks/' + GAME + '-dqn', global_step = t)
+            
 
         # print info
         state = ""
@@ -185,7 +192,7 @@ def trainNetwork(s, readout, h_fc1, sess):
             state = "explore"
         else:
             state = "train"
-        print "TIMESTEP", t, "/ STATE", state, "/ LINES", game_state.total_lines, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t)
+        print( "TIMESTEP", t, "/ STATE", state, "/ LINES", game_state.total_lines, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
 
         # write info to files
         '''

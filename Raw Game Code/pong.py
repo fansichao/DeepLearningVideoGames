@@ -41,6 +41,7 @@ bar1_score, bar2_score = 0,0
 clock = pygame.time.Clock()
 font = pygame.font.SysFont("calibri",40)
 
+import  time
 done = False
 while done==False:       
     for event in pygame.event.get(): # User did something
@@ -56,6 +57,8 @@ while done==False:
                 bar1_move = 0.
             elif event.key == K_DOWN:
                 bar1_move = 0.
+              
+
             
     score1 = font.render(str(bar1_score), True,(255,255,255))
     score2 = font.render(str(bar2_score), True,(255,255,255))
