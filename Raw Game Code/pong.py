@@ -35,6 +35,7 @@ bar1_y, bar2_y = 215. , 215.
 circle_x, circle_y = 307.5, 232.5
 bar1_move, bar2_move = 0. , 0.
 speed_x, speed_y, speed_circ = 250., 250., 250.
+speed_x, speed_y, speed_circ = 250., 250., 250.
 bar1_score, bar2_score = 0,0
 
 #clock and font objects

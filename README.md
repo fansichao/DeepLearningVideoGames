@@ -1,5 +1,25 @@
 # Using Deep Q Networks to Learn Video Game Strategies
-#### Akshay Srivatsan, Ivan Kuznetsov, Willis Wang
+
+## Install & Run
+
+```bash
+python3.6
+
+pip install -r requirement.txt
+
+# > Run 俄罗斯方块
+python deep_q_network_tetris.py
+
+# Run 打球
+python deep_q_network_pong.py
+```
+
+运行效果如下
+![运行效果图片](images/game.png)
+
+## Else Msg
+
+Akshay Srivatsan, Ivan Kuznetsov, Willis Wang
 
 ## 1. Abstract
 

@@ -13,10 +13,18 @@ from collections import deque
 
 import dummy_game
 import numpy as np
-import pong_fun  # whichever is imported "as game" will be used
-import tetris_fun as game
 
-GAME = 'tetris' # the name of the game being played for log files
+
+
+GAME = 'pong' # the name of the game being played for log files
+
+if GAME == 'tetris':
+    import tetris_fun as game
+elif GAME == 'pong':
+    import pong_fun as game  # whichever is imported "as game" will be used
+
+
+
 ACTIONS = 6 # number of valid actions
 GAMMA = 0.99 # decay rate of past observations
 OBSERVE = 500. # timesteps to observe before training
@@ -192,8 +200,8 @@ def trainNetwork(s, readout, h_fc1, sess):
             state = "explore"
         else:
             state = "train"
-        print( "TIMESTEP", t, "/ STATE", state, "/ LINES", game_state.total_lines, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
-
+        # print("TIMESTEP", t, "/ STATE", state, "/ LINES", game_state.total_lines, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
+        print("TIMESTEP", t, "/ STATE", state, "/ EPSILON", epsilon, "/ ACTION", action_index, "/ REWARD", r_t, "/ Q_MAX %e" % np.max(readout_t))
         # write info to files
         '''
         if t % 10000 <= 100:
